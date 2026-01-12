@@ -1,43 +1,46 @@
 -- Entity state doesn't work, it keeps throwing an error for some reason. 0x3BB78F05
 -- local Entity = Entity
+local targetIds = {}
+local ox_target = nil
+
 
 local function getDoorHashFromEntity(entity)
-    local doors = DoorSystemGetActive()
-    for index, value in ipairs(doors) do
-        local doorHash = value[1]
-        local doorHandle = value[2]
-        if doorHandle == entity then
-            return doorHash
-        end
-    end
+	local doors = DoorSystemGetActive()
+	for index, value in ipairs(doors) do
+		local doorHash = value[1]
+		local doorHandle = value[2]
+		if doorHandle == entity then
+			return doorHash
+		end
+	end
 end
 
 local function getDoorFromEntity(data)
-    local entity = type(data) == 'table' and data.entity or data
+	local entity = type(data) == 'table' and data.entity or data
 
-    if not entity then return end
+	if not entity then return end
 
-    -- local state = Entity(entity)?.state
-    local state = DoorEntity[entity]
-    local doorId = state?.doorId
+	-- local state = Entity(entity)?.state
+	local state = DoorEntity[entity]
+	local doorId = state?.doorId
 
-    if not doorId then return end
+	if not doorId then return end
 
-    local door = doors[doorId]
+	local door = doors[doorId]
 
-    if not door then
-        state.doorId = nil
-    end
+	if not door then
+		state.doorId = nil
+	end
 
-    return door
+	return door
 end
 
 exports('getClosestDoorId', function() return ClosestDoor?.id end)
 exports('getDoorIdFromEntity', function(entityId) return getDoorFromEntity(entityId)?.id end) -- same as Entity(entityId).state.doorId
 
 local function entityIsNotDoor(data)
-    local entity = type(data) == 'number' and data or data.entity
-    return not getDoorFromEntity(entity)
+	local entity = type(data) == 'number' and data or data.entity
+	return not getDoorFromEntity(entity)
 end
 
 PickingLock = false
@@ -53,70 +56,94 @@ end
 ---@param entity number
 local function pickLock(entity)
     local door = getDoorFromEntity(entity)
-
     if not door or PickingLock or not door.lockpick or (not Config.CanPickUnlockedDoors and door.state == 0) then return end
-
+    
     PickingLock = true
-
     TaskTurnPedToFaceCoord(cache.ped, door.coords.x, door.coords.y, door.coords.z, 4000)
     Wait(500)
+    
+    -- Анимация (по желанию раскомментируйте)
+    -- local animDict = lib.requestAnimDict('mp_common_heist')
+    -- TaskPlayAnim(cache.ped, animDict, 'pick_door', 3.0, 1.0, -1, 49, 0, true, true, true)
+    
+    -- НАСТРОЙКА ПАРАМЕТРОВ
+    local difficulty = 2 -- По умолчанию Normal (2)
+    local rawDifficulty = door.lockpickDifficulty
 
-    ----local animDict = lib.requestAnimDict('script_common@jail_cell@unlock@key')
+    -- Проверка: если сложность - это число от 1 до 4, используем его.
+    if type(rawDifficulty) == "number" and rawDifficulty >= 1 and rawDifficulty <= 4 then
+        difficulty = rawDifficulty
+    -- Если это таблица (старый формат от lib.skillCheck) или неверный тип,
+    -- то игнорируем её и оставляем difficulty = 2. Это предотвратит ошибку арифметики.
+    elseif type(rawDifficulty) == "table" then
+        print("^3[ox_doorlock] ^7Door " .. door.id .. " has old lockpickDifficulty format (table). Resetting to 2 (Normal).")
+    end
 
-    ---TaskPlayAnim(cache.ped, animDict, 'action', 3.0, 1.0, -1, 49, 0, true, true, true)
-
-    local success = lib.skillCheck(door.lockpickDifficulty or Config.LockDifficulty)
-    local rand = math.random(1, success and 100 or 5)
-
+    -- Обработка AreaSize (второй параметр)
+    local areaSize = false
+    if door.lockpickAreaSize == true then
+        areaSize = true
+    end
+    
+    -- ЗАПУСК МИНИ-ИГРЫ
+    local success = exports['kb_lockpicking']:startLockpick(difficulty, areaSize)
+    
+    --local rand = math.random(1, success and 100 or 5)
+	print("success minigame: ", tostring(success))
+    
     if success then
+        -- УСПЕХ: Открываем дверь. Отмычка НЕ тратится (так как мы убрали удаление в серверной части).
         TriggerServerEvent('ox_doorlock:setState', door.id, door.state == 1 and 0 or 1, true)
-    end
-
-    if rand == 1 then
-        TriggerServerEvent('ox_doorlock:breakLockpick')
-        lib.notify({ type = 'error', description = locale('lockpick_broke') })
-    end
-
-    StopEntityAnim(cache.ped, 'pick_door', animDict, 0)
-    RemoveAnimDict(animDict)
-
+    else
+        -- ПРОВАЛ: Отправляем событие на сервер, чтобы сломать отмычку.
+        TriggerServerEvent('ox_doorlock:failedLockpick')
+    
+    -- if rand == 1 then
+        -- TriggerServerEvent('ox_doorlock:breakLockpick')
+        -- lib.notify({ type = 'error', description = locale('lockpick_broke') })
+    -- end
+    
+    -- Остановка анимации
+    -- StopEntityAnim(cache.ped, 'pick_door', animDict, 0)
+    -- RemoveAnimDict(animDict)
+    
     PickingLock = false
 end
 
 exports('pickClosestDoor', function()
-    if not ClosestDoor then return end
+	if not ClosestDoor then return end
 
-    pickLock(ClosestDoor.entity)
+	pickLock(ClosestDoor.entity)
 end)
 
 local tempData = {}
 
 local function addDoorlock(data)
-    local entity = type(data) == 'number' and data or data.entity
-    local model = GetEntityModel(entity)
-    local coords = GetEntityCoords(entity)
-    local doorHash = getDoorHashFromEntity(entity)
+	local entity = type(data) == 'number' and data or data.entity
+	local model = GetEntityModel(entity)
+	local coords = GetEntityCoords(entity)
+	local doorHash = getDoorHashFromEntity(entity)
 
-    AddDoorToSystemNew(doorHash, true, true, false, 0, 0, false)
-    DoorSystemSetDoorState(doorHash, 4, false, false)
+	AddDoorToSystemNew(doorHash, true, true, false, 0, 0, false)
+	DoorSystemSetDoorState(doorHash, 4, false, false)
 
-    coords = GetEntityCoords(entity)
-    tempData[#tempData + 1] = {
-        entity = entity,
-        model = model,
-        coords = coords,
-        heading = math.floor(GetEntityHeading(entity) + 0.5),
-        hash = doorHash
-    }
+	coords = GetEntityCoords(entity)
+	tempData[#tempData + 1] = {
+		entity = entity,
+		model = model,
+		coords = coords,
+		heading = math.floor(GetEntityHeading(entity) + 0.5),
+		hash = doorHash
+	}
 
-    RemoveDoorFromSystem(doorHash)
+	RemoveDoorFromSystem(doorHash)
 end
 
 local isAddingDoorlock = false
 
 RegisterNUICallback('notify', function(data, cb)
-    cb(1)
-    lib.notify({ title = data })
+	cb(1)
+	lib.notify({ title = data })
 end)
 
 RegisterNUICallback('createDoor', function(data, cb)
@@ -125,6 +152,7 @@ RegisterNUICallback('createDoor', function(data, cb)
 
     data.state = data.state and 1 or 0
 
+    -- Очистка пустых полей
     if data.items and not next(data.items) then
         data.items = nil
     end
@@ -133,12 +161,21 @@ RegisterNUICallback('createDoor', function(data, cb)
         data.characters = nil
     end
 
-    if data.lockpickDifficulty and not next(data.lockpickDifficulty) then
+    -- ИЗМЕНЕНИЕ ЛОГИКИ DIFFICULTY
+    -- Раньше здесь была проверка if data.lockpickDifficulty and not next(data.lockpickDifficulty)
+    -- Так как теперь lockpickDifficulty это число (1-4), проверка next вызовет ошибку.
+    -- Мы просто проверяем, есть ли значение.
+    if not data.lockpickDifficulty then
         data.lockpickDifficulty = nil
     end
 
     if data.groups and not next(data.groups) then
         data.groups = nil
+    end
+
+    -- Если UI не отправил lockpickAreaSize, ставим nil или false по умолчанию
+    if data.lockpickAreaSize == nil then
+        data.lockpickAreaSize = false 
     end
 
     if not data.id then
@@ -231,81 +268,129 @@ RegisterNUICallback('createDoor', function(data, cb)
 end)
 
 RegisterNUICallback('deleteDoor', function(id, cb)
-    cb(1)
-    TriggerServerEvent('ox_doorlock:editDoorlock', id)
+	cb(1)
+	TriggerServerEvent('ox_doorlock:editDoorlock', id)
 end)
 
 RegisterNUICallback('teleportToDoor', function(id, cb)
-    cb(1)
-    SetNuiFocus(false, false)
-    TriggerServerEvent('ox_doorlock:teleportToDoor', id)
+	cb(1)
+	SetNuiFocus(false, false)
+	local doorCoords = doors[id].coords
+	if not doorCoords then return end
+	SetEntityCoords(cache.ped, doorCoords.x, doorCoords.y, doorCoords.z, false, false, false, false)
 end)
 
 RegisterNUICallback('exit', function(_, cb)
-    cb(1)
-    SetNuiFocus(false, false)
+	cb(1)
+	SetNuiFocus(false, false)
 end)
 
 local function openUi(id)
-    if source == '' or isAddingDoorlock then return end
+	if source == '' or isAddingDoorlock then return end
 
-    if not NuiHasLoaded then
-        NuiHasLoaded = true
+	if not NuiHasLoaded then
+		NuiHasLoaded = true
 
-        SendNuiMessage(json.encode({
-            action = 'updateDoorData',
-            data = doors
-        }, { with_hole = false }))
-        Wait(100)
+		SendNuiMessage(json.encode({
+			action = 'updateDoorData',
+			data = doors
+		}, { with_hole = false }))
+		Wait(100)
 
-        SendNUIMessage({
-            action = 'setSoundFiles',
-            data = lib.callback.await('ox_doorlock:getSounds', false)
-        })
-    end
+		SendNUIMessage({
+			action = 'setSoundFiles',
+			data = lib.callback.await('ox_doorlock:getSounds', false)
+		})
+	end
 
-    SetNuiFocus(true, true)
-    SendNuiMessage(json.encode({
-        action = 'setVisible',
-        data = id
-    }))
+	SetNuiFocus(true, true)
+	SendNuiMessage(json.encode({
+		action = 'setVisible',
+		data = id
+	}))
 end
 
 RegisterNetEvent('ox_doorlock:triggeredCommand', function(closest)
-    openUi(closest and ClosestDoor?.id or nil)
+	openUi(closest and ClosestDoor?.id or nil)
 end)
 
 CreateThread(function()
+    -- Убедитесь, что lib доступна
+    
     local target
-
+    
     if GetResourceState('ox_target'):find('start') then
         target = {
             ox = true,
             exp = exports.ox_target
         }
+        --print("^2[ox_doorlock] ^7ox_target enabled")
     elseif GetResourceState('qtarget'):find('start') then
         target = {
             qt = true,
             exp = exports.qtarget
         }
     end
-
-    if not target then return end
-
+    
+    if not target then 
+        --print("^1[ox_doorlock] ^7No target resource found!")
+        return 
+    end
+    
     if target.ox then
+        -- Функция для проверки наличия отмычек через сервер
+        local function hasLockpicks()
+            return lib.callback('ox_doorlock:checkLockpicks', false)
+        end
+        
+        -- Функция для использования отмычки через сервер
+        local function useLockpick()
+            return lib.callback('ox_doorlock:useLockpick', false)
+        end
+        
+        -- Настройки глобального объекта
         target.exp:addGlobalObject({
             {
                 name = 'pickDoorlock',
                 label = locale('pick_lock'),
                 icon = 'fas fa-user-lock',
-                onSelect = pickLock,
-                canInteract = canPickLock,
-                items = Config.LockpickItems,
-                anyItem = true,
-                distance = 1
+                onSelect = function(data)
+                    -- Проверяем наличие отмычек
+                    if not hasLockpicks() then
+                        lib.notify({
+                            type = 'error',
+                            description = locale('no_lockpick')
+                        })
+                        return
+                    end
+                    
+                    -- Используем отмычку
+                    -- if not useLockpick() then
+                        -- lib.notify({
+                            -- type = 'error',
+                            -- description = locale('no_lockpick')
+                        -- })
+                        -- return
+                    -- end
+                    
+                    -- Получаем сущность из данных
+                    local entity = data.entity or (type(data) == 'number' and data)
+                    if entity then
+                        pickLock(entity)
+                    end
+                end,
+                canInteract = function(entity, distance, data)
+                    -- Проверяем, можем ли мы взломать эту дверь
+                    return canPickLock(entity)
+                end,
+                distance = 1.5,
+                debug = GetConvarInt('ox_target:debug', 0) == 1
             }
         })
+        
+        print("^2[ox_doorlock] ^7Global doorlock target registered successfully")
     else
+        -- Сохраняем поддержку qtarget для совместимости
         local options = {
             {
                 label = locale('pick_lock'),
@@ -316,19 +401,15 @@ CreateThread(function()
                 distance = 1
             }
         }
-
-        ---@cast target table
-
+        
         if target.qt then
             target.exp:Object({ options = options })
         end
-
-        options = { locale('pick_lock') }
-
+        
         AddEventHandler('onResourceStop', function(resource)
             if resource == cache.resource then
                 if target.qt then
-                    return target.exp:RemoveObject(options)
+                    target.exp:RemoveObject({ locale('pick_lock') })
                 end
             end
         end)

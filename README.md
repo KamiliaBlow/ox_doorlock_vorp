@@ -1,6 +1,9 @@
 # [Ox Doorlock](https://github.com/overextended/ox_doorlock)
 
-Adjusted to work with RSG RedM Framework
+Thanks to the Overextended team, I managed to adapt this FiveM script to work in RedM. No more listing door hashes one by one, and make sure the game correctly recognizes the door object as a door. Here’s the [tutorial](https://youtu.be/bDoabIL_tpo?si=6sn0uwW2GrXivNEv) to make the game recognize it as a door.
+
+Door management resource, with compatibility for [rsg-core](https://github.com/Rexshack-RedM/rsg-core), [VORP](https://github.com/VORPCORE/vorp_core-lua) and [RedEM:RP](https://github.com/RedEM-RP/redem_roleplay).
+Successor to nui_doorlock with less scuff and more stuff.
 
 ## Dependencies
 
@@ -67,9 +70,8 @@ TriggerEvent('ox_doorlock:setState', mrpd_locker_rooms.id, state)
 ```lua
 AddEventHandler('ox_doorlock:stateChanged', function(source, doorId, state, usedItem)
     if usedItem == 'trainticket' then
-        local src = source
-        local Player = RSGCore.Functions.GetPlayer(src)
-        Player.Functions.RemoveItem(usedItem, 1)
+        local xPlayer = ESX.GetPlayerFromId(source)
+        xPlayer.removeInventoryItem(usedItem, 1)
     end
 end)
 ```
