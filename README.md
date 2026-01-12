@@ -5,6 +5,8 @@ Thanks to the Overextended team, I managed to adapt this FiveM script to work in
 Door management resource, with compatibility for [rsg-core](https://github.com/Rexshack-RedM/rsg-core), [VORP](https://github.com/VORPCORE/vorp_core-lua) and [RedEM:RP](https://github.com/RedEM-RP/redem_roleplay).
 Successor to nui_doorlock with less scuff and more stuff.
 
+АХТУНГ! Этот скрипт отредактирован ТОЛЬКО для работы с VORP и моей системой взлома [kb_lockpicking](https://github.com/KamiliaBlow/kb_lockpicking) и то ради последнего нужно переработать систему настройки сложностей для взлома, чтобы она отправляла данные в соотвествии с моим скриптом.
+
 ## Dependencies
 
 ### [oxmysql](https://github.com/overextended/oxmysql)
