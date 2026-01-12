@@ -97,7 +97,8 @@ local function pickLock(entity)
     else
         -- ПРОВАЛ: Отправляем событие на сервер, чтобы сломать отмычку.
         TriggerServerEvent('ox_doorlock:failedLockpick')
-    
+    end
+	
     -- if rand == 1 then
         -- TriggerServerEvent('ox_doorlock:breakLockpick')
         -- lib.notify({ type = 'error', description = locale('lockpick_broke') })
@@ -363,15 +364,6 @@ CreateThread(function()
                         })
                         return
                     end
-                    
-                    -- Используем отмычку
-                    -- if not useLockpick() then
-                        -- lib.notify({
-                            -- type = 'error',
-                            -- description = locale('no_lockpick')
-                        -- })
-                        -- return
-                    -- end
                     
                     -- Получаем сущность из данных
                     local entity = data.entity or (type(data) == 'number' and data)
