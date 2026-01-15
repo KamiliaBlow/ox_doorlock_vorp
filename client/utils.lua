@@ -62,9 +62,13 @@ local function pickLock(entity)
     TaskTurnPedToFaceCoord(cache.ped, door.coords.x, door.coords.y, door.coords.z, 4000)
     Wait(500)
     
-    -- Анимация (по желанию раскомментируйте)
-    -- local animDict = lib.requestAnimDict('mp_common_heist')
-    -- TaskPlayAnim(cache.ped, animDict, 'pick_door', 3.0, 1.0, -1, 49, 0, true, true, true)
+    RequestAnimDict('script_ca@carust@02@ig@ig1_rustlerslockpickingconv01')
+	
+    while not HasAnimDictLoaded('script_ca@carust@02@ig@ig1_rustlerslockpickingconv01') do
+        Citizen.Wait(100)
+    end
+	
+    TaskPlayAnim(cache.ped, 'script_ca@carust@02@ig@ig1_rustlerslockpickingconv01', 'idle_base_smhthug_01', 1.0, -1.0, -1, 1, 1.0, false, false, false, '', false)
     
     -- НАСТРОЙКА ПАРАМЕТРОВ
     local difficulty = 2 -- По умолчанию Normal (2)
@@ -88,8 +92,7 @@ local function pickLock(entity)
     -- ЗАПУСК МИНИ-ИГРЫ
     local success = exports['kb_lockpicking']:startLockpick(difficulty, areaSize)
     
-    --local rand = math.random(1, success and 100 or 5)
-	print("success minigame: ", tostring(success))
+	--print("success minigame: ", tostring(success))
     
     if success then
         -- УСПЕХ: Открываем дверь. Отмычка НЕ тратится (так как мы убрали удаление в серверной части).
@@ -98,15 +101,11 @@ local function pickLock(entity)
         -- ПРОВАЛ: Отправляем событие на сервер, чтобы сломать отмычку.
         TriggerServerEvent('ox_doorlock:failedLockpick')
     end
-	
-    -- if rand == 1 then
-        -- TriggerServerEvent('ox_doorlock:breakLockpick')
-        -- lib.notify({ type = 'error', description = locale('lockpick_broke') })
-    -- end
+
     
     -- Остановка анимации
-    -- StopEntityAnim(cache.ped, 'pick_door', animDict, 0)
-    -- RemoveAnimDict(animDict)
+    ClearPedTasks(cache.ped) -- Очищает задачи педа (сбрасывает анимацию)
+    RemoveAnimDict(animDict) -- Удаляет словарь из памяти для оптимизации
     
     PickingLock = false
 end

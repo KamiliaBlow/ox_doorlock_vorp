@@ -31,7 +31,7 @@ Config.CanPickUnlockedDoors = true
 
 ---An array of items that function as lockpicks.
 Config.LockpickItems = {
-    'lockpick'
+    'misc_lockpick'
 }
 
 ---Play sounds using game audio (sound natives) instead of through NUI.

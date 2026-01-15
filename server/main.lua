@@ -267,7 +267,7 @@ local function isAuthorised(playerId, door, lockpick)
 		end
 
 		if not authorised and door.items then
-			authorised = DoesPlayerHaveItem(player, door.items) or nil
+			authorised = DoesPlayerHaveItem(playerId, door.items) or nil
 		end
 
 		if authorised ~= nil and door.passcode then
