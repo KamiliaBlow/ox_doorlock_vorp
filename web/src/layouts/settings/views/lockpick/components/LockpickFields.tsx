@@ -3,46 +3,44 @@ import { Group, NumberInput, Switch, Text } from '@mantine/core';
 import { useState, useEffect } from 'react';
 
 const LockpickFields: React.FC = () => {
-  const currentData = useStore((state) => state.lockpickDifficulty) as any;
-  const setLockpickFields = useSetters((setter) => setter.setLockpickDifficulty);
+  const currentDifficulty = useStore((state) => state.lockpickDifficulty) as number;
+  const currentAreaSize = useStore((state) => state.lockpickAreaSize) as boolean;
 
-  const [difficulty, setDifficulty] = useState<number>(2);  
-  // Локальное состояние переключателя: true = ВКЛЮЧЕН, false = ВЫКЛЮЧЕН
+  const setDifficultyValue = useSetters((setter) => setter.setLockpickDifficulty);
+  // ИСПРАВЛЕНИЕ ОШИБКИ СБОРКИ: используем корректное имя метода из store
+  const setAreaSizeValue = useSetters((setter) => setter.setLockpickAreaSize);
+
+  const [difficulty, setDifficulty] = useState<number>(2);
   const [arePinsRaised, setArePinsRaised] = useState<boolean>(true);
 
-  // Синхронизация при загрузке
   useEffect(() => {
-    if (typeof currentData === 'object' && !Array.isArray(currentData)) {
-      setDifficulty(currentData.difficulty ?? 2);
-      
-      // Если в базе false (пины опущены), то переключатель ВКЛ (true)
-      setArePinsRaised(currentData.lockpickAreaSize !== true);
+    // Обработка старых данных при загрузке
+    if (typeof currentDifficulty === 'number') {
+      setDifficulty(currentDifficulty);
+    } else if (typeof currentDifficulty === 'object' && currentDifficulty !== null) {
+       // Если вдруг загрузился старый объект, пробуем достать оттуда данные
+       // @ts-ignore
+       setDifficulty(currentDifficulty.difficulty ?? 2);
     }
-  }, [currentData]);
+    
+    setArePinsRaised(currentAreaSize === true);
+  }, [currentDifficulty, currentAreaSize]);
 
-  // Функция обновления общего хранилища
-  const updateStore = () => {
-    setLockpickFields({
-      difficulty: difficulty,
-      lockpickAreaSize: !arePinsRaised,
-    } as any); 
-  };
-
-  // Обработчик изменения сложности
-  const handleDifficultyChange = (value: number | undefined) => {
+  const handleDifficultyChange = (value: number | string | undefined) => {
     if (value === undefined) return;
-    
     const num = Number(value);
-    
     if (!isNaN(num) && num >= 1 && num <= 4) {
       setDifficulty(num);
-      updateStore();
+      // Передаем новое значение 'num' напрямую в хранилище
+      setDifficultyValue(num);
     }
   };
 
   const handleSwitchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setArePinsRaised(event.currentTarget.checked);
-    updateStore();
+    const checked = event.currentTarget.checked;
+    setArePinsRaised(checked);
+    // Передаем checked напрямую в хранилище
+    setAreaSizeValue(checked);
   };
 
   return (
@@ -58,12 +56,13 @@ const LockpickFields: React.FC = () => {
           max={4}
           step={1}
           placeholder="2"
+          description="1 = Easy, 2 = Normal, 3= Hard, 4= Master"
         />
       </div>
 
       <div style={{ width: '48%', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
         <Switch
-          label="Are some pins raised?"
+          label="Are all pins active?"
           checked={arePinsRaised}
           onChange={handleSwitchChange}
           size="md"

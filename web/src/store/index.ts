@@ -15,7 +15,8 @@ export interface StoreState {
   doorRate: NumberField;
   lockSound: StringField;
   unlockSound: StringField;
-  lockpickDifficulty: Array<string | { areaSize: number; speedMultiplier: number }>;
+  lockpickDifficulty: number; // Число
+  lockpickAreaSize: boolean;   // Булево значение
   auto: boolean | null;
   state: boolean | null;
   lockpick: boolean | null;
@@ -35,7 +36,11 @@ interface StateSetters {
   setItems: (fn: (state: StoreState['items']) => StoreState['items']) => void;
   setCharacters: (fn: (state: StoreState['characters']) => StoreState['characters']) => void;
   setGroups: (fn: (state: StoreState['groups']) => StoreState['groups']) => void;
-  setLockpickDifficulty: (fn: (state: StoreState['lockpickDifficulty']) => StoreState['lockpickDifficulty']) => void;
+  
+  // Сеттеры принимают простые значения, а не функции
+  setLockpickDifficulty: (value: number) => void;
+  setLockpickAreaSize: (value: boolean) => void;
+  
   toggleCheckbox: (type: 'state' | 'doors' | 'auto' | 'lockpick' | 'hideUi' | 'holdOpen') => void;
   setMaxDistance: (value: StoreState['maxDistance']) => void;
   setDoorRate: (value: StoreState['doorRate']) => void;
@@ -48,7 +53,13 @@ export const useStore = create<StoreState>(() => ({
   items: [{ name: '', metadata: '', remove: false }],
   characters: [''],
   groups: [{ name: '', grade: undefined }],
-  lockpickDifficulty: [''],
+  
+  // ИСПРАВЛЕНО 1: Установили число по умолчанию (было [''])
+  lockpickDifficulty: 2, 
+  
+  // ИСПРАВЛЕНО 2: Добавили значение по умолчанию
+  lockpickAreaSize: false, 
+  
   maxDistance: 0,
   doorRate: 0,
   lockSound: '',
@@ -71,11 +82,9 @@ export const useSetters = create<StateSetters>((set: SetState<StateSetters>, get
   setName: (value) => useStore.setState({ name: value }),
   setPasscode: (value: StoreState['passcode']) => useStore.setState({ passcode: value }),
   setAutolock: (value: StoreState['autolock']) => useStore.setState({ autolock: value }),
-  // @ts-ignore
-  toggleCheckbox: (type) => useStore.setState((state) => ({ [type]: !state[type] })),
+  toggleCheckbox: (type) => useStore.setState((state) => ({ ...state, [type]: !state[type] })),
   setMaxDistance: (value: StoreState['maxDistance']) => useStore.setState(() => ({ maxDistance: value })),
-  // Returns previous state, works like usual state setter except if you
-  // want to set state straight away, you still have to call the function
+  
   setItems: (fn) => useStore.setState(({ items: itemFields }) => ({ items: fn(itemFields) })),
   setCharacters: (fn) =>
     useStore.setState(({ characters: characterFields }) => ({
@@ -85,9 +94,12 @@ export const useSetters = create<StateSetters>((set: SetState<StateSetters>, get
     useStore.setState(({ groups: groupFields }) => ({
       groups: fn(groupFields),
     })),
-  setLockpickDifficulty: (fn) =>
-    useStore.setState(({ lockpickDifficulty: difficultyFields }) => ({
-      lockpickDifficulty: fn(difficultyFields),
-    })),
+    
+  // ИСПРАВЛЕНО 3: Упростили сеттер, чтобы он принимал число напрямую
+  setLockpickDifficulty: (value) => useStore.setState({ lockpickDifficulty: value }),
+  
+  // ИСПРАВЛЕНО 4: Добавили реализацию сеттера для пинов
+  setLockpickAreaSize: (value) => useStore.setState({ lockpickAreaSize: value }),
+  
   setDoorRate: (value: StoreState['doorRate']) => useStore.setState({ doorRate: value }),
 }));
