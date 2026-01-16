@@ -6,8 +6,7 @@ const LockpickFields: React.FC = () => {
   const currentData = useStore((state) => state.lockpickDifficulty) as any;
   const setLockpickFields = useSetters((setter) => setter.setLockpickDifficulty);
 
-  const [difficulty, setDifficulty] = useState<number>(2);
-  
+  const [difficulty, setDifficulty] = useState<number>(2);  
   // Локальное состояние переключателя: true = ВКЛЮЧЕН, false = ВЫКЛЮЧЕН
   const [arePinsRaised, setArePinsRaised] = useState<boolean>(true);
 
@@ -25,14 +24,12 @@ const LockpickFields: React.FC = () => {
   const updateStore = () => {
     setLockpickFields({
       difficulty: difficulty,
-      // ИСПРАВЛЕНИЕ ОШИБКИ 1: Используем 'as any', чтобы обойти проверку старых типов хранилища
       lockpickAreaSize: !arePinsRaised,
     } as any); 
   };
 
-  // ИСПРАВЛЕНИЕ ОШИБКИ 2: Принимаем number | undefined, как требует Mantine
+  // Обработчик изменения сложности
   const handleDifficultyChange = (value: number | undefined) => {
-    // Если значение не определено, ничего не делаем
     if (value === undefined) return;
     
     const num = Number(value);
@@ -67,7 +64,6 @@ const LockpickFields: React.FC = () => {
       <div style={{ width: '48%', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
         <Switch
           label="Are some pins raised?"
-          description="Less complexity, more raised"
           checked={arePinsRaised}
           onChange={handleSwitchChange}
           size="md"
