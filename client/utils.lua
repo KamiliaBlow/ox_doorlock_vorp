@@ -90,7 +90,7 @@ local function pickLock(entity)
     end
     
     -- ЗАПУСК МИНИ-ИГРЫ
-    local success = exports['kb_lockpicking']:startLockpick(difficulty, areaSize)
+    local success = exports['kb_lockpicking']:startLockpickManual(difficulty, areaSize)
     
 	--print("success minigame: ", tostring(success))
     
